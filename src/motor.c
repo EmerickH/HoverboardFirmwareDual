@@ -787,11 +787,12 @@ double ComputePID(struct Motor *motor, double Input)
    motor->lastErr = error;
    motor->lastTime = now;
 
+	motor->PIDout = Output;
    return Output;
 }
 
-double motor_Get_PID_Value(struct Motor *motor){
-	return motor->lastErr;
+float motor_Get_PID_Value(struct Motor *motor){
+	return motor->PIDout;
 }
 
 void SetPosition(struct Motor *motor, double Setpoint)
