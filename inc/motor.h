@@ -56,6 +56,7 @@ struct Motor {
 	struct Motor_setup setup;
 	volatile __IO uint32_t uwPeriodValue;
 	volatile __IO uint8_t position; //hall
+	volatile __IO float oldpos; //hall to calculate abs
 	volatile __IO float absposition; //hall in degrees
 	volatile __IO uint8_t next_position; //hall
 

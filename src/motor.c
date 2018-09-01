@@ -329,8 +329,8 @@ void motor_init(struct Motor *motor){
  */
 void motor_start(struct Motor *motor){
 	motor_Set_PWM_ALL(motor, 0);
-	HAL_NVIC_SetPriority(motor->setup.EXTI_IRQn, 0, 0);
-	HAL_NVIC_EnableIRQ(motor->setup.EXTI_IRQn);
+	//HAL_NVIC_SetPriority(motor->setup.EXTI_IRQn, 0, 0);
+	//HAL_NVIC_EnableIRQ(motor->setup.EXTI_IRQn);
 	motor_pwm(motor, 0);
 	motor->stop = 0;
 }
@@ -340,7 +340,6 @@ void motor_start(struct Motor *motor){
  */
 void motor_speed(struct Motor *motor, int16_t rpm) {
 	if (motor->atPos == 1){
-		motor_block(motor);
 		return;
 	}else if (rpm == 0) {
 		motor_stop(motor);
@@ -445,17 +444,10 @@ void motor_stop(struct Motor *motor){
 	motor_High_OFF(motor, 1);
 	motor_High_OFF(motor, 2);
 
-	HAL_NVIC_DisableIRQ(motor->setup.EXTI_IRQn);
-	__HAL_GPIO_EXTI_CLEAR_IT(motor->setup.HALL_PINS[0]);
-	__HAL_GPIO_EXTI_CLEAR_IT(motor->setup.HALL_PINS[1]);
-	__HAL_GPIO_EXTI_CLEAR_IT(motor->setup.HALL_PINS[2]);
-}
-
-/* Block motor
- */
-void motor_block(struct Motor *motor){
-	motor->speed = (int16_t) 0;
-	motor_Set_PWM_ALL(motor, MAINTAINPWM);
+	//HAL_NVIC_DisableIRQ(motor->setup.EXTI_IRQn);
+	//__HAL_GPIO_EXTI_CLEAR_IT(motor->setup.HALL_PINS[0]);
+	//__HAL_GPIO_EXTI_CLEAR_IT(motor->setup.HALL_PINS[1]);
+	//__HAL_GPIO_EXTI_CLEAR_IT(motor->setup.HALL_PINS[2]);
 }
 
 /* Initialize the timer responsible for the pwm - no interrupts.
@@ -673,7 +665,15 @@ float motor_Get_Abs_Position(struct Motor *motor){
 /* This is the interrupt function for whenever the hall sensor readings change.
  */
 void HALL_ISR_Callback(struct Motor *motor){
-	
+	int newPos = motor_Get_Position(motor);
+	if (motor->oldpos == 0 && newPos == 5){
+		motor->absposition -= 1;
+	}else if (motor->oldpos == 5 && newPos == 0){
+		motor->absposition += 1;
+	}else{
+		motor->absposition += newPos - motor->oldpos;
+	}
+	motor->oldpos = newPos;
 }
 
 /* This is the interrupt function to change the duty cycle 16x per commutation phase.
@@ -711,7 +711,9 @@ void Duty_ISR_Callback(struct Motor *motor){
 void Speed_ISR_Callback(struct Motor *motor){
 	// if no new data in a second, stop!!
 	if (HAL_GetTick() - last_rx_time > HEARTBEAT_PERIOD) {
-		motor_stop(motor);
+		if(motor->atPos == 0){
+			motor_stop(motor);
+		}
 		SET_ERROR_BIT(status, STATUS_HEARTBEAT_MISSING);
 	} else {
 		CLR_ERROR_BIT(status, STATUS_HEARTBEAT_MISSING);
@@ -726,7 +728,7 @@ void Speed_ISR_Callback(struct Motor *motor){
 		newPos = in_range(motor_Get_Position(motor) + motor->setup.OFFSET_NEG_HALL);
 	}
 
-	if (motor->position != newPos){
+	/*if (motor->position != newPos){
 		if (motor->position == 0 && newPos > 3){
 			motor->absposition -= 1;
 		}else if (motor->position > 3 && newPos == 0){
@@ -734,7 +736,7 @@ void Speed_ISR_Callback(struct Motor *motor){
 		}else{
 			motor->absposition += newPos - motor->position;
 		}
-	}
+	}*/
 
 	if (motor->stop) {
 		motor->position = newPos;
@@ -817,6 +819,10 @@ double ComputePID(struct Motor *motor)
 	   /*Remember some variables for next time*/
 	   motor->lastErr = error;
 	   motor->lastTime = now;
+
+	   if (Output < 0){
+		   Output = 0-Output;
+	   }
 
 		//motor->PIDout = Output;
 	   return Output;
