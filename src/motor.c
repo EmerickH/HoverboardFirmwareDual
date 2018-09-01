@@ -800,10 +800,12 @@ double ComputePID(struct Motor *motor)
 		motor->direction = 1;
 		motor->atPos = 0;
 	}else{
+		motor->speed = 0;
 		motor->atPos = 1;
+		motor->errSum = 0;
 	}
 
-	if (motor->atPos == 0){
+	if (motor->atPos == 0 && motor->speed > 0){
 	   /*How long since we last calculated*/
 	   unsigned long now = HAL_GetTick();
 	   double timeChange = (double)(now - motor->lastTime);
