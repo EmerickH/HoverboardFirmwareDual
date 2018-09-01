@@ -72,7 +72,7 @@
     #define PIDKP               0.1
     #define PIDKI               0 //5
     #define PIDKD               0 //1
-    #define MAINTAINPWM         2
+    #define MAINTAINPWM         5
 #endif
 
 
@@ -90,5 +90,6 @@
 #define TX_WAIT_PERIOD	  50   //250 ms
 #define RX_WAIT_PERIOD    50    //ms
 #define HEARTBEAT_PERIOD  500   //ms
+#define PID_COMP_PERIOD   10 //ms
 
 #endif /* __CONFIG__H */

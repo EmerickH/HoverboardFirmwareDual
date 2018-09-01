@@ -83,7 +83,8 @@ struct Motor {
 	volatile __IO double ki;
 	volatile __IO double kd;*/
 	volatile __IO double Setpoint;
-	volatile __IO float PIDout;
+	//volatile __IO float PIDout;
+	volatile __IO int atPos;
 };
 
 // PUBLIC
@@ -122,7 +123,7 @@ void Duty_ISR_Callback(struct Motor *motor);
 void Speed_ISR_Callback(struct Motor *motor);
 
 #if POWER_METHOD == PID_POWER
-double ComputePID(struct Motor *motor, double Input);
+double ComputePID(struct Motor *motor);
 float motor_Get_PID_Value(struct Motor *motor);
 void SetPosition(struct Motor *motor, double Setpoint);
 #endif

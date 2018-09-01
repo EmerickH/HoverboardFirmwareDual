@@ -314,6 +314,7 @@ void motor_init(struct Motor *motor){
 
 	motor->direction = 1;
 	motor->stop = 1;
+	motor->atPos = 0;
 
 	// pwm lines: +1, const, or -1
 	motor->PWM_DUTIES[0] = 0;
@@ -338,7 +339,10 @@ void motor_start(struct Motor *motor){
  * If the speed is out of range, one of the error bits is set.
  */
 void motor_speed(struct Motor *motor, int16_t rpm) {
-	if (rpm == 0) {
+	if (motor->atPos == 1){
+		motor_block(motor);
+		return;
+	}else if (rpm == 0) {
 		motor_stop(motor);
 		return;
 	}
@@ -360,17 +364,25 @@ void motor_speed(struct Motor *motor, int16_t rpm) {
 		CLR_ERROR_BIT(status, STATUS_SPEED_OUT_OF_BOUNDS);
 	}
 
-	//1000000 microseconds / second * 60 seconds / minute
-	float tick_speed = 1000000 * 60 / (WHEEL_HALL_COUNTS * rpm);
-	int16_t old_speed = motor->speed;
 
-	if (tick_speed < 0) {
-		motor->direction = -1 * motor->setup.OFFSET_DIR;
-		motor->speed = -1 * (int16_t) tick_speed; //absolute value of <speed>
-	} else  {
-		motor->direction = motor->setup.OFFSET_DIR;
+	#if POWER_METHOD == PID_POWER
+		//1000000 microseconds / second * 60 seconds / minute
+		float tick_speed = 1000000 * 60 / (WHEEL_HALL_COUNTS * absrpm);
+		int16_t old_speed = motor->speed;
 		motor->speed = (int16_t) tick_speed;
-	}
+	#else
+		//1000000 microseconds / second * 60 seconds / minute
+		float tick_speed = 1000000 * 60 / (WHEEL_HALL_COUNTS * rpm);
+		int16_t old_speed = motor->speed;
+
+		if (tick_speed < 0) {
+			motor->direction = -1 * motor->setup.OFFSET_DIR;
+			motor->speed = -1 * (int16_t) tick_speed; //absolute value of <speed>
+		} else  {
+			motor->direction = motor->setup.OFFSET_DIR;
+			motor->speed = (int16_t) tick_speed;
+		}
+	#endif
 
 	if (old_speed != motor->speed) {
 		#if POWER_METHOD != PID_POWER
@@ -437,6 +449,13 @@ void motor_stop(struct Motor *motor){
 	__HAL_GPIO_EXTI_CLEAR_IT(motor->setup.HALL_PINS[0]);
 	__HAL_GPIO_EXTI_CLEAR_IT(motor->setup.HALL_PINS[1]);
 	__HAL_GPIO_EXTI_CLEAR_IT(motor->setup.HALL_PINS[2]);
+}
+
+/* Block motor
+ */
+void motor_block(struct Motor *motor){
+	motor->speed = (int16_t) 0;
+	motor_Set_PWM_ALL(motor, MAINTAINPWM);
 }
 
 /* Initialize the timer responsible for the pwm - no interrupts.
@@ -723,7 +742,7 @@ void Speed_ISR_Callback(struct Motor *motor){
 	}
 
 	#if POWER_METHOD == PID_POWER
-		motor_pwm(motor, ComputePID(motor, motor->absposition));
+		//motor_pwm(motor, ComputePID(motor));
 	#elif CONTROL_METHOD == SINUSOIDAL_CONTROL || CONTROL_METHOD == TRAPEZOIDAL_CONTROL
 		if (newPos == motor->position) {
 			motor_pwm(motor, motor->pwm + motor->pos_increment);
@@ -769,30 +788,46 @@ void Speed_ISR_Callback(struct Motor *motor){
 
 #if POWER_METHOD == PID_POWER
 
-double ComputePID(struct Motor *motor, double Input)
+double ComputePID(struct Motor *motor)
 {
-   /*How long since we last calculated*/
-   unsigned long now = HAL_GetTick();
-   double timeChange = (double)(now - motor->lastTime);
-  
-   /*Compute all the working error variables*/
-   double error = motor->Setpoint - Input;
-   motor->errSum += (error * timeChange);
-   double dErr = (error - motor->lastErr) / timeChange;
-  
-   /*Compute PID Output*/
-   double Output = PIDKP * error + PIDKI * motor->errSum + PIDKD * dErr;
-  
-   /*Remember some variables for next time*/
-   motor->lastErr = error;
-   motor->lastTime = now;
+	/* get direction */
+	if(motor->absposition > motor->Setpoint){
+		motor->direction = -1;
+		motor->atPos = 0;
+	}else if(motor->absposition < motor->Setpoint){
+		motor->direction = 1;
+		motor->atPos = 0;
+	}else{
+		motor->atPos = 1;
+	}
 
-	motor->PIDout = Output;
-   return Output;
+	if (motor->atPos == 0){
+	   /*How long since we last calculated*/
+	   unsigned long now = HAL_GetTick();
+	   double timeChange = (double)(now - motor->lastTime);
+
+	   /*Compute all the working error variables*/
+	   double error = motor->Setpoint - motor->absposition;
+	   motor->errSum += (error * timeChange);
+	   double dErr = (error - motor->lastErr) / timeChange;
+
+	   /*Compute PID Output*/
+	   double Output = PIDKP * error + PIDKI * motor->errSum + PIDKD * dErr;
+
+	   /*Remember some variables for next time*/
+	   motor->lastErr = error;
+	   motor->lastTime = now;
+
+		//motor->PIDout = Output;
+	   return Output;
+	}else{
+		return MAINTAINPWM;
+	}
 }
 
 float motor_Get_PID_Value(struct Motor *motor){
-	return motor->PIDout;
+	//return motor->PIDout;
+	return 0;
 }
 
 void SetPosition(struct Motor *motor, double Setpoint)

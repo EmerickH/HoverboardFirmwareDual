@@ -34,7 +34,7 @@ extern struct Motor motor_L;
 extern struct Motor motor_R;
 #endif
 
-volatile uint32_t time, last_tx_time, last_rx_time, last_pwr_time;
+volatile uint32_t time, last_tx_time, last_rx_time, last_pwr_time, last_pid_time;
 volatile int8_t status;
 int16_t speeds[2];
 
@@ -76,6 +76,7 @@ int main(void)
 	last_rx_time = HAL_GetTick();
 	last_tx_time = HAL_GetTick();
 	last_pwr_time = HAL_GetTick();
+	last_pid_time = HAL_GetTick();
 
 	SetPosition(&motor_L, 100);
 	SetPosition(&motor_R, 100);
@@ -99,6 +100,15 @@ int main(void)
 		if (time - last_pwr_time > POWER_CHECK_PERIOD) {
 			check_power();
 		}
+
+		#if POWER_METHOD == PID_POWER
+		// compute PID
+		if (time - last_pid_time > PID_COMP_PERIOD) {
+			motor_pwm(&motor_L, ComputePID(&motor_L));
+			motor_pwm(&motor_R, ComputePID(&motor_R));
+			last_pid_time = HAL_GetTick();
+		}
+		#endif
 
 		HAL_IWDG_Refresh(&hiwdg);   //819mS
 	}
