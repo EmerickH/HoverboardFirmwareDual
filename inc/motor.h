@@ -77,14 +77,13 @@ struct Motor {
 
 	volatile __IO int16_t timer_duty_cnt;
 
-	volatile __IO unsigned long lastTime;
-	volatile __IO double errSum;
-	volatile __IO double lastErr;
-    /*volatile __IO double kp;
-	volatile __IO double ki;
-	volatile __IO double kd;*/
-	volatile __IO double Setpoint;
-	//volatile __IO float PIDout;
+	volatile __IO int32_t position_error;
+	volatile __IO int32_t pid_requested_position;
+	volatile __IO int32_t pid_last_requested_position;
+	volatile __IO int32_t pid_last_requested_position_delta;
+	volatile __IO int32_t pid_integrated_error;
+	volatile __IO int32_t pid_prev_position_error;
+
 	volatile __IO int atPos;
 };
 

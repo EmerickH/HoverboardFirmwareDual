@@ -793,10 +793,10 @@ void Speed_ISR_Callback(struct Motor *motor){
 double ComputePID(struct Motor *motor)
 {
 	/* get direction */
-	if(motor->absposition > motor->Setpoint + 1){
+	if(motor->absposition > motor->pid_requested_position + 1){
 		motor->direction = -1;
 		motor->atPos = 0;
-	}else if(motor->absposition < motor->Setpoint - 1){
+	}else if(motor->absposition < motor->pid_requested_position - 1){
 		motor->direction = 1;
 		motor->atPos = 0;
 	}else{
@@ -808,30 +808,54 @@ double ComputePID(struct Motor *motor)
 	}
 
 	if (motor->atPos == 0 && motor->speed > 0){
-	   /*How long since we last calculated*/
-	   unsigned long now = HAL_GetTick();
-	   double timeChange = (double)(now - motor->lastTime);
+			uint32_t abs_position_error;
+			int32_t position_delta;
+			int32_t position_delta_delta;
 
-	   /*Compute all the working error variables*/
-	   double error = motor->Setpoint - motor->absposition;
-	   motor->errSum += (error * timeChange);
-	   double dErr = (error - motor->lastErr) / timeChange;
+			motor->position_error = motor->absposition - motor->pid_requested_position;
 
-	   /*Compute PID Output*/
-	   double Output = PIDKP * error + PIDKI * motor->errSum + PIDKD * dErr;
+			position_delta= motor->pid_requested_position - motor->pid_last_requested_position;
+			position_delta_delta = position_delta - motor->pid_last_requested_position_delta;
 
-	   /*Remember some variables for next time*/
-	   motor->lastErr = error;
-	   motor->lastTime = now;
+			motor->pid_last_requested_position = motor->pid_requested_position;
+			motor->pid_last_requested_position_delta = position_delta;
 
-	   if (Output < 0){
-		   Output = 0-Output;
-	   }
+			abs_position_error = abs(motor->position_error);
+			if(abs_position_error < PIDDEADBAND)
+			{
+				motor->position_error=0;
+			}
+			else if (motor->position_error > 0)
+				motor->position_error -= PIDDEADBAND;
+			else
+				motor->position_error += PIDDEADBAND;
 
-		//motor->PIDout = Output;
-	   return Output;
+		//P
+			int32_t output = motor->position_error * PIDKP;
+
+		//I
+			motor->pid_integrated_error += motor->position_error * PIDKI;
+			if (motor->pid_integrated_error > 400000)
+				motor->pid_integrated_error = 400000;
+			if (motor->pid_integrated_error < -400000)
+				motor->pid_integrated_error = -400000;
+
+			output += motor->pid_integrated_error;
+		//D
+			output += (motor->position_error - motor->pid_prev_position_error) * PIDKD;
+			motor->pid_prev_position_error = motor->position_error;
+
+
+		//FF1
+			output += position_delta * PIDFF1;
+		//FF2
+			output += position_delta_delta * PIDFF2;
+
+			output /= 100; //provide larger dynamic range for pid. (without this, having pid_Ki = 1 was enough for oscillation.
+
+			return abs(output);
 	}else{
-		motor->errSum = 0;
+		motor->pid_integrated_error = 0;
 		return 0;
 	}
 }
@@ -843,7 +867,7 @@ float motor_Get_PID_Value(struct Motor *motor){
 
 void SetPosition(struct Motor *motor, double Setpoint)
 {
-   motor->Setpoint = Setpoint;
+   motor->pid_requested_position = Setpoint;
 }
 
 #endif
