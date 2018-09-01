@@ -104,8 +104,22 @@ int main(void)
 		#if POWER_METHOD == PID_POWER
 		// compute PID
 		if (time - last_pid_time > PID_COMP_PERIOD) {
-			motor_pwm(&motor_L, ComputePID(&motor_L));
-			motor_pwm(&motor_R, ComputePID(&motor_R));
+			int pidl, pidr;
+			pidl = ComputePID(&motor_L);
+			pidr = ComputePID(&motor_R);
+
+			if (pidl == 0){
+				motor_pwm(&motor_L, MAINTAINPWM);
+				motor_Set_PWM_ALL(&motor_L, MAINTAINPWM);
+			}else{
+				motor_pwm(&motor_L, pidr);
+			}
+			if (pidr == 0){
+				motor_pwm(&motor_R, MAINTAINPWM);
+				motor_Set_PWM_ALL(&motor_R, MAINTAINPWM);
+			}else{
+				motor_pwm(&motor_R, pidr);
+			}
 			last_pid_time = HAL_GetTick();
 		}
 		#endif

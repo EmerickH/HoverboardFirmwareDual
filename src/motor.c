@@ -793,16 +793,18 @@ void Speed_ISR_Callback(struct Motor *motor){
 double ComputePID(struct Motor *motor)
 {
 	/* get direction */
-	if(motor->absposition > motor->Setpoint){
+	if(motor->absposition > motor->Setpoint + 1){
 		motor->direction = -1;
 		motor->atPos = 0;
-	}else if(motor->absposition < motor->Setpoint){
+	}else if(motor->absposition < motor->Setpoint - 1){
 		motor->direction = 1;
 		motor->atPos = 0;
 	}else{
 		motor->speed = 0;
 		motor->atPos = 1;
-		motor->errSum = 0;
+		motor->stop = 1;
+
+		motor->next_position = motor->position;
 	}
 
 	if (motor->atPos == 0 && motor->speed > 0){
@@ -829,7 +831,8 @@ double ComputePID(struct Motor *motor)
 		//motor->PIDout = Output;
 	   return Output;
 	}else{
-		return MAINTAINPWM;
+		motor->errSum = 0;
+		return 0;
 	}
 }
 

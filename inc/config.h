@@ -72,7 +72,7 @@
     #define PIDKP               0.1
     #define PIDKI               0.000008 //5
     #define PIDKD               0.1 //1
-    #define MAINTAINPWM         5
+    #define MAINTAINPWM         10
 #endif
 
 
