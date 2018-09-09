@@ -366,7 +366,8 @@ void motor_speed(struct Motor *motor, int16_t rpm) {
 
 	#if POWER_METHOD == PID_POWER
 		//1000000 microseconds / second * 60 seconds / minute
-		float tick_speed = 1000000 * 60 / (WHEEL_HALL_COUNTS * absrpm);
+		//float tick_speed = 1000000 * 60 / (WHEEL_HALL_COUNTS * absrpm);
+		float tick_speed = 1000 * UNITTIME / absrpm;
 		int16_t old_speed = motor->speed;
 		motor->speed = (int16_t) tick_speed;
 	#else
@@ -807,7 +808,7 @@ double ComputePID(struct Motor *motor)
 		motor->next_position = motor->position;
 	}
 
-	if (motor->atPos == 0 && motor->speed > 0){
+	if (motor->atPos == 0 && motor->stop == 0){
 			uint32_t abs_position_error;
 			int32_t position_delta;
 			int32_t position_delta_delta;
@@ -853,7 +854,11 @@ double ComputePID(struct Motor *motor)
 
 			output /= 100; //provide larger dynamic range for pid. (without this, having pid_Ki = 1 was enough for oscillation.
 
-			return abs(output);
+			if (output < 0){
+				return 0 - output;
+			}else{
+				return output;
+			}
 	}else{
 		motor->pid_integrated_error = 0;
 		return 0;

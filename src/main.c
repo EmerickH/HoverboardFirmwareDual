@@ -78,8 +78,8 @@ int main(void)
 	last_pwr_time = HAL_GetTick();
 	last_pid_time = HAL_GetTick();
 
-	SetPosition(&motor_L, 100);
-	SetPosition(&motor_R, 100);
+	//SetPosition(&motor_L, 100);
+	//SetPosition(&motor_R, 100);
 
 	while (1) {
 		time = HAL_GetTick();
@@ -141,9 +141,13 @@ void receive_data() {
 	int uart_rx_status = Uart_RX_process();
 	if (uart_rx_status == 1) {
 		last_rx_time = HAL_GetTick();
+		//Motors_speeds(speeds[0], speeds[1]);
+		SetPosition(&motor_L, motor_Get_Abs_Position(&motor_L) + speeds[0]);
+		SetPosition(&motor_R, motor_Get_Abs_Position(&motor_R) + speeds[1]);
+
+		//int vitl = abs(motor_Get_Abs_Position(&motor_L) - speeds[0]) / 90 / 0.000833333;
+		//int vitr = abs(motor_Get_Abs_Position(&motor_R) - speeds[1]) / 90 / 0.000833333;
 		Motors_speeds(speeds[0], speeds[1]);
-		//SetPosition(&motor_L, speeds[0]);
-		//SetPosition(&motor_R, speeds[1]);
 	}
 }
 
