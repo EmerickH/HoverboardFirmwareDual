@@ -79,6 +79,8 @@
     #define MAINTAINPWM         10
 
 	#define UNITTIME			50 //ms (hall position per UNITTIME)
+
+	#define BASESPEED 70
 #endif
 
 

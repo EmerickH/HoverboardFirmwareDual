@@ -339,12 +339,12 @@ void motor_start(struct Motor *motor){
  * If the speed is out of range, one of the error bits is set.
  */
 void motor_speed(struct Motor *motor, int16_t rpm) {
-	if (motor->atPos == 1){
+	/*if (motor->atPos == 1){
 		return;
 	}else if (rpm == 0) {
 		motor_stop(motor);
 		return;
-	}
+	}*/
 
 	//check it is in the valid range
 	int absrpm = rpm;
@@ -355,11 +355,11 @@ void motor_speed(struct Motor *motor, int16_t rpm) {
 	if (absrpm > MAX_SPEED) {
 		absrpm = MAX_SPEED;
 		SET_ERROR_BIT(status, STATUS_SPEED_OUT_OF_BOUNDS);
-	} else if (absrpm < MIN_SPEED) { //min
+	}/* else if (absrpm < MIN_SPEED) { //min
 		motor_stop(motor);
 		SET_ERROR_BIT(status, STATUS_SPEED_OUT_OF_BOUNDS);
 		return;
-	} else {
+	}*/ else {
 		CLR_ERROR_BIT(status, STATUS_SPEED_OUT_OF_BOUNDS);
 	}
 
@@ -712,9 +712,9 @@ void Duty_ISR_Callback(struct Motor *motor){
 void Speed_ISR_Callback(struct Motor *motor){
 	// if no new data in a second, stop!!
 	if (HAL_GetTick() - last_rx_time > HEARTBEAT_PERIOD) {
-		if(motor->atPos == 0){
+		/*if(motor->atPos == 0){
 			motor_stop(motor);
-		}
+		}*/
 		SET_ERROR_BIT(status, STATUS_HEARTBEAT_MISSING);
 	} else {
 		CLR_ERROR_BIT(status, STATUS_HEARTBEAT_MISSING);
